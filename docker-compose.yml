@@ -20,6 +20,56 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false # Desactivamos seguridad para desarrollo
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g # Ajuste de memoria
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.14.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"status\":\"available\"' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  apm:
+    image: docker.elastic.co/apm/apm-server:8.14.0
+    ports:
+      - "8200:8200"
+    environment:
+      - output.elasticsearch.hosts=["http://elasticsearch:9200"]
+      - apm-server.host=0.0.0.0:8200
+      - logging.level=debug
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8200 | grep -q 'APM Server is available' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   redis_data:
+  es_data:
+    driver: local
 
