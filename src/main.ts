@@ -1,10 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
+import { AppModule } from './app.module';
+import { initializeApm } from 'config/apm.config';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Inicializar APM usando ConfigService
+  const configService = app.get(ConfigService);
+  initializeApm(configService);
 
   //Config Swagger
   const config = new DocumentBuilder()
